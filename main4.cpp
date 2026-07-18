@@ -8,6 +8,17 @@
 #include<cstdlib>
 #include<sstream>
 
+std::string trim(std::string &str)
+{
+    size_t trim_start = str.find_first_not_of(" \r\t\n");
+    if(trim_start == std::string::npos)
+    {
+        return "";
+    }
+    size_t trim_end = str.find_last_not_of(" \r\t\n");
+    return str.substr(trim_start, trim_end - trim_start + 1);
+}
+
 void convertToMap(const char *buffer)
 {
     std::map<std::string, std::string> converted;
@@ -38,6 +49,8 @@ void convertToMap(const char *buffer)
         {
             std::string key = line.substr(0, delim_pos);
             std::string value = line.substr(delim_pos + 1);
+            key = trim(key);
+            value = trim(value);
 
             converted.insert(std::make_pair(key, value));
         }
@@ -45,16 +58,12 @@ void convertToMap(const char *buffer)
     }
     for(std::map<std::string, std::string>::iterator it = converted.begin(); it != converted.end(); it++)
     {
-        std::cout<< it->first << ":" << it->second << std::endl;
+        std::cout<< it->first << ": " << it->second << std::endl;
     }
     std::cout << "\n\n";
     std::cout << body;
 }
 
-int add_ten(int num)
-{
-    return num + 10;
-}
 int main()
 {
     int pipefd[2];
@@ -123,6 +132,6 @@ int main()
         //std::cout << num;
         convertToMap(buffer);
     }
-    wait(NULL);
+    waitpid(pid, NULL, 0);
     //std::cout << "\nchild finished\n";
 }
