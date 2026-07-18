@@ -51,10 +51,18 @@ void convertToMap(const char *buffer)
             std::string value = line.substr(delim_pos + 1);
             key = trim(key);
             value = trim(value);
-
             converted.insert(std::make_pair(key, value));
         }
         line_start = line_end + 1;
+    }
+    std::map<std::string, std::string>::iterator status_it = converted.find("Status");
+    if(status_it != converted.end())
+    {
+        std::cout << "HTTP/1.1: " << status_it->second << "\n";
+        converted.erase(status_it);
+    }
+    else{
+        std::cout << "HTTP/1.1: 200 OK" << "\n";
     }
     for(std::map<std::string, std::string>::iterator it = converted.begin(); it != converted.end(); it++)
     {
