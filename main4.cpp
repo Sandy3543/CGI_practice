@@ -45,8 +45,9 @@ void convertToMap(const char *buffer)
     }
     for(std::map<std::string, std::string>::iterator it = converted.begin(); it != converted.end(); it++)
     {
-        std::cout<< it->first << "=" << it->second << std::endl;
+        std::cout<< it->first << ":" << it->second << std::endl;
     }
+    std::cout << "\n\n";
     std::cout << body;
 }
 
