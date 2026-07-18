@@ -6,6 +6,49 @@
 #include<cstring>
 #include<string>
 #include<cstdlib>
+#include<sstream>
+
+void convertToMap(const char *buffer)
+{
+    std::map<std::string, std::string> converted;
+    std::string data(buffer);
+    size_t line_start = 0;
+    size_t fence = data.find("\r\n\r\n");
+    size_t fence_len = 4;
+    if(fence == std::string::npos)
+    {
+        fence = data.find("\n\n");
+        fence_len = 2;
+    }
+    std::string header = data.substr(line_start, fence);
+    std::string body = data.substr(fence + fence_len);
+    while(line_start < header.length())
+    {
+        size_t line_end = header.find('\n', line_start);
+        if(line_end == std::string::npos)
+        {
+            line_end = header.length();
+        }
+        std::string line = header.substr(line_start, line_end - line_start);
+        if (!line.empty() && line[line.length() - 1] == '\r') {
+        line.erase(line.length() - 1);
+        }   
+        size_t delim_pos = line.find(":");
+        if(delim_pos != std::string::npos)
+        {
+            std::string key = line.substr(0, delim_pos);
+            std::string value = line.substr(delim_pos + 1);
+
+            converted.insert(std::make_pair(key, value));
+        }
+        line_start = line_end + 1;
+    }
+    for(std::map<std::string, std::string>::iterator it = converted.begin(); it != converted.end(); it++)
+    {
+        std::cout<< it->first << "=" << it->second << std::endl;
+    }
+    std::cout << body;
+}
 
 int add_ten(int num)
 {
@@ -74,10 +117,11 @@ int main()
             return 1;
         }
         buffer[bytes_read] = '\0';
-        std::cout << "Received from child: " << buffer;
+        //std::cout << buffer;
         close(pipefd[0]);
         //std::cout << num;
+        convertToMap(buffer);
     }
     wait(NULL);
-    std::cout << "\nchild finished\n";
+    //std::cout << "\nchild finished\n";
 }
