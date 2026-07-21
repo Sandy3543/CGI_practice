@@ -58,11 +58,11 @@ void convertToMap(const char *buffer)
     std::map<std::string, std::string>::iterator status_it = converted.find("Status");
     if(status_it != converted.end())
     {
-        std::cout << "HTTP/1.1: " << status_it->second << "\n";
+        std::cout << "HTTP/1.1 " << status_it->second << "\n";
         converted.erase(status_it);
     }
     else{
-        std::cout << "HTTP/1.1: 200 OK" << "\n";
+        std::cout << "HTTP/1.1 200 OK" << "\n";
     }
     for(std::map<std::string, std::string>::iterator it = converted.begin(); it != converted.end(); it++)
     {
@@ -103,9 +103,9 @@ int main()
         env["SERVER_SOFTWARE"] = "Webserv/1.0";
         env["PATH_INFO"] = "";
         env["PATH_TRANSLATED"] = "";
-        env["SCREPT_FILENAME"] = "/full/path/to/mult2.py";
+        env["SCRIPT_FILENAME"] = "/full/path/to/mult2.py";
         env["REDIRECT_STATUS"] = "200";
-        env["REQUEST_URI"] = "/cgi-bin/mult2.py?a=2&b=8";
+        env["REQUEST_URI"] = "/cgi-bin/mult2.py?a=3&b=8";
 
         std::vector<std::string> env_list;
         for(std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); it++)
