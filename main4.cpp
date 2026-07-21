@@ -94,7 +94,18 @@ int main()
 
         std::map<std::string, std::string> env;
         env["REQUEST_METHOD"] = "GET";
-        env["QUERY_STRING"] = "a=2&b=8";
+        env["QUERY_STRING"] = "a=3&b=8";
+        env["SCRIPT_NAME"] = "/cgi-bin/mult2.py";
+        env["SERVER_NAME"] = "localhost";
+        env["SERVER_PORT"] = "8080";
+        env["SERVER_PROTOCOL"] = "HTTP/1.1";
+        env["GATEWAY_INTERFACE"] = "CGI/1.1";
+        env["SERVER_SOFTWARE"] = "Webserv/1.0";
+        env["PATH_INFO"] = "";
+        env["PATH_TRANSLATED"] = "";
+        env["SCREPT_FILENAME"] = "/full/path/to/mult2.py";
+        env["REDIRECT_STATUS"] = "200";
+        env["REQUEST_URI"] = "/cgi-bin/mult2.py?a=2&b=8";
 
         std::vector<std::string> env_list;
         for(std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); it++)
