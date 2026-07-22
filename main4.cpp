@@ -1,12 +1,12 @@
-#include<iostream>
-#include<unistd.h>
-#include<sys/wait.h>
-#include<map>
-#include<vector>
-#include<cstring>
-#include<string>
-#include<cstdlib>
-#include<sstream>
+#include <iostream>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <map>
+#include <vector>
+#include <cstring>
+#include <string>
+#include <cstdlib>
+#include <sstream>
 
 std::string trim(std::string &str)
 {
@@ -19,10 +19,8 @@ std::string trim(std::string &str)
     return str.substr(trim_start, trim_end - trim_start + 1);
 }
 
-void convertToMap(const char *buffer)
+void convertToMap(const std::string &data)
 {
-    std::map<std::string, std::string> converted;
-    std::string data(buffer);
     size_t line_start = 0;
     size_t fence = data.find("\r\n\r\n");
     size_t fence_len = 4;
@@ -31,8 +29,12 @@ void convertToMap(const char *buffer)
         fence = data.find("\n\n");
         fence_len = 2;
     }
-    std::string header = data.substr(line_start, fence);
-    std::string body = data.substr(fence + fence_len);
+
+    std::string header = (fence != std::string::npos) ? data.substr(0, fence) : data;
+    std::string body = (fence != std::string::npos) ? data.substr(fence + fence_len) : "";
+
+    std::map<std::string, std::string> converted;
+
     while(line_start < header.length())
     {
         size_t line_end = header.find('\n', line_start);
@@ -42,7 +44,7 @@ void convertToMap(const char *buffer)
         }
         std::string line = header.substr(line_start, line_end - line_start);
         if (!line.empty() && line[line.length() - 1] == '\r') {
-        line.erase(line.length() - 1);
+            line.erase(line.length() - 1);
         }   
         size_t delim_pos = line.find(":");
         if(delim_pos != std::string::npos)
@@ -55,47 +57,63 @@ void convertToMap(const char *buffer)
         }
         line_start = line_end + 1;
     }
+
     std::map<std::string, std::string>::iterator status_it = converted.find("Status");
     if(status_it != converted.end())
     {
         std::cout << "HTTP/1.1 " << status_it->second << "\n";
         converted.erase(status_it);
     }
-    else{
-        std::cout << "HTTP/1.1 200 OK" << "\n";
+    else {
+        std::cout << "HTTP/1.1 200 OK\n";
     }
-    for(std::map<std::string, std::string>::iterator it = converted.begin(); it != converted.end(); it++)
+
+    for(std::map<std::string, std::string>::iterator it = converted.begin(); it != converted.end(); ++it)
     {
-        std::cout<< it->first << ": " << it->second << std::endl;
+        std::cout << it->first << ": " << it->second << std::endl;
     }
-    std::cout << "\n\n";
+    std::cout << "\n";
     std::cout << body;
 }
 
-int main()
+int main(int ac, char **av)
 {
-    int pipefd[2];
-    if(pipe(pipefd) < 0)
+    if(ac != 2)
     {
-        std::cerr << "pipe failed";
+        std::cerr << "Usage: " << av[0] << " <script.py>" << std::endl;
         return 1;
     }
+    std::string script_filename(av[1]);
+    std::string request_body = "a=5&b=10";
+    int pipe_stdin[2];
+    int pipe_stdout[2];
+
+    if (pipe(pipe_stdin) < 0 || pipe(pipe_stdout) < 0)
+    {
+        std::cerr << "pipe failed" << std::endl;
+        return 1;
+    }
+
     pid_t pid = fork();
     if(pid < 0)
     {
-        std::cerr << "fork failed";
+        std::cerr << "fork failed" << std::endl;
         return 1;
     }
     else if(pid == 0)
     {
-        dup2(pipefd[1],STDOUT_FILENO);
-        close(pipefd[0]);
-        close(pipefd[1]);
+        dup2(pipe_stdin[0], STDIN_FILENO);
+        dup2(pipe_stdout[1], STDOUT_FILENO);
+        close(pipe_stdin[0]);
+        close(pipe_stdin[1]);
+        close(pipe_stdout[0]);
+        close(pipe_stdout[1]);
 
         std::map<std::string, std::string> env;
-        env["REQUEST_METHOD"] = "GET";
-        env["QUERY_STRING"] = "a=3&b=8";
-        env["SCRIPT_NAME"] = "/cgi-bin/mult2.py";
+        env["REQUEST_METHOD"] = "POST";
+        env["CONTENT_LENGTH"] = std::to_string(request_body.length());
+        env["CONTENT_TYPE"] = "application/x-www-form-urlencoded";
+        env["SCRIPT_NAME"] = "/cgi-bin/" + script_filename;
         env["SERVER_NAME"] = "localhost";
         env["SERVER_PORT"] = "8080";
         env["SERVER_PROTOCOL"] = "HTTP/1.1";
@@ -103,15 +121,16 @@ int main()
         env["SERVER_SOFTWARE"] = "Webserv/1.0";
         env["PATH_INFO"] = "";
         env["PATH_TRANSLATED"] = "";
-        env["SCRIPT_FILENAME"] = "/full/path/to/mult2.py";
+        env["SCRIPT_FILENAME"] = script_filename;
         env["REDIRECT_STATUS"] = "200";
-        env["REQUEST_URI"] = "/cgi-bin/mult2.py?a=3&b=8";
+        env["DOCUMENT_ROOT"] = ".";
+        env["QUERY_STRING"] = "";
+        env["REQUEST_URI"] = "/cgi-bin/" + script_filename;
 
         std::vector<std::string> env_list;
-        for(std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); it++)
+        for(std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); ++it)
         {
-            std::string line = it->first + "=" + it->second;
-            env_list.push_back(line);
+            env_list.push_back(it->first + "=" + it->second);
         }
 
         char **envp = new char*[env_list.size() + 1];
@@ -122,10 +141,9 @@ int main()
         }
         envp[env_list.size()] = NULL;
 
-        char *args[] = {(char *)"/usr/bin/python3", (char *)"mult2.py", NULL};
+        char *args[] = {(char *)"/usr/bin/python3", (char *)script_filename.c_str(), NULL};
         execve("/usr/bin/python3", args, envp);
-        std::cerr << "execve failed";
-
+        std::cerr << "execve failed" << std::endl;
         for(size_t i = 0; i < env_list.size(); i++)
         {
             delete[] envp[i];
@@ -136,21 +154,29 @@ int main()
     }
     else
     {
-        close(pipefd[1]);
-        int bytes_read;
-        char buffer[1024];
-        bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1);
-        if(bytes_read < 0)
+        close(pipe_stdin[0]); 
+        close(pipe_stdout[1]);
+
+        if (!request_body.empty())
         {
-            std::cerr << "read failed";
-            return 1;
+            write(pipe_stdin[1], request_body.c_str(), request_body.length());
         }
-        buffer[bytes_read] = '\0';
-        //std::cout << buffer;
-        close(pipefd[0]);
-        //std::cout << num;
-        convertToMap(buffer);
+        close(pipe_stdin[1]);
+        std::string full_response = "";
+        char buffer[1024];
+        ssize_t bytes_read;
+
+        while ((bytes_read = read(pipe_stdout[0], buffer, sizeof(buffer) - 1)) > 0)
+        {
+            buffer[bytes_read] = '\0';
+            full_response += buffer;
+        }
+
+        close(pipe_stdout[0]);
+
+        convertToMap(full_response);
+        waitpid(pid, NULL, 0);
     }
-    waitpid(pid, NULL, 0);
-    //std::cout << "\nchild finished\n";
+
+    return 0;
 }
