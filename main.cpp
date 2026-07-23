@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
+#include <fcntl.h>
+#include <cerrno>
 
 int main(int ac, char *av[])
 {
@@ -26,12 +28,32 @@ int main(int ac, char *av[])
     close(fdW);
 
     char buffer[1024];
-    ssize_t read_bytes = read(fdR, buffer, sizeof(buffer) - 1);
-    if(read_bytes > 0)
+    // ssize_t read_bytes = read(fdR, buffer, sizeof(buffer) - 1);
+    // if(read_bytes > 0)
+    // {
+    //     buffer[read_bytes] = '\0';
+    //     std::cout << " ----- CGI OUTPUT --------" << std::endl;
+    //     convertToMap(buffer);
+    // }
+    while(true)
     {
-        buffer[read_bytes] = '\0';
-        std::cout << " ----- CGI OUTPUT --------" << std::endl;
-        convertToMap(buffer);
+        ssize_t read_bytes = read(fdR, buffer, sizeof(buffer) - 1);
+        if(read_bytes > 0)
+        {
+            buffer[read_bytes] = '\0';
+            std::cout << " ----- CGI OUTPUT --------" << std::endl;
+            convertToMap(buffer);
+            break;
+        }
+        else if(read_bytes == -1 & errno == EAGAIN)
+        {
+            std::cout << "no data yet, sleeping ... \n"; 
+            sleep(1);
+        }
+        else{
+            break;
+        }
     }
+    close(fdR);
     waitpid(cgi.getPid(), NULL, 0);
 }

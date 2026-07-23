@@ -8,6 +8,8 @@
 #include <fstream>
 #include <map>
 #include <sys/socket.h>
+#include <fcntl.h>
+#include <cerrno>
 
 
 class CGI

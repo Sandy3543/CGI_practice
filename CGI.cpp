@@ -86,6 +86,11 @@ pid_t CGI::execute(int &fdR, int &fdW)
         return -1;
     }
 
+    fcntl(pipe_stdin[0], F_SETFD, FD_CLOEXEC);
+    fcntl(pipe_stdin[1], F_SETFD, FD_CLOEXEC);
+    fcntl(pipe_stdout[0], F_SETFD, FD_CLOEXEC);
+    fcntl(pipe_stdout[1], F_SETFD, FD_CLOEXEC);
+
     pid_t pid = fork();
 
     if(pid < 0)
@@ -124,6 +129,9 @@ pid_t CGI::execute(int &fdR, int &fdW)
     close(pipe_stdout[1]);
     fdR = pipe_stdout[0];
     fdW = pipe_stdin[1];
+
+    fcntl(fdR, F_SETFL, O_NONBLOCK);
+    fcntl(fdW, F_SETFL, O_NONBLOCK);
 
     _pid = pid;
     return _pid;
