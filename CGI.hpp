@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include <map>
+#include <sys/socket.h>
 
 
 class CGI
@@ -15,12 +16,13 @@ class CGI
         pid_t _pid;
         std::string lastError;
         std::string _script_filename;
+        std::string _interpreter;
         char **envp;
 
     public:
         CGI();
         ~CGI();
-        bool setUp(const std::string &script_filename, const std::string &request_body);
+        bool setUp(const std::string &script_filename, const std::string &request_body, const std::string &interpreter);
         pid_t execute(int &fdR, int &fdW);
 
         pid_t getPid() const;
