@@ -23,8 +23,9 @@ pid_t CGI::getPid() const
     return _pid;
 }
 
-bool CGI::setUp(const std::string &script_filename, const std::string &request_body)
+bool CGI::setUp(const std::string &script_filename, const std::string &request_body, const std::string &interpreter)
 {
+    _interpreter = interpreter;
     std::ifstream file(script_filename.c_str());
     if(!file.good())
     {
@@ -72,14 +73,14 @@ pid_t CGI::execute(int &fdR, int &fdW)
 {
     int pipe_stdin[2];
     int pipe_stdout[2];
-    if(pipe(pipe_stdin) < 0)
+    if(socketpair(AF_UNIX, SOCK_STREAM, 0, pipe_stdin) < 0)
     {
-        lastError = "stdin pipe failed!";
+        lastError = "stdin socketpair failed!";
         return -1;
     }
-    if(pipe(pipe_stdout) < 0)
+    if(socketpair(AF_UNIX, SOCK_STREAM, 0, pipe_stdout) < 0)
     {
-        lastError = "stdout pipe faile";
+        lastError = "stdout socketpair failed!";
         close(pipe_stdin[0]);
         close(pipe_stdin[1]);
         return -1;
@@ -105,8 +106,16 @@ pid_t CGI::execute(int &fdR, int &fdW)
         close(pipe_stdout[0]);
         close(pipe_stdout[1]);
 
-        char *argv[] = {(char *)("/usr/bin/python3"), (char *)_script_filename.c_str(), NULL};
-        execve(argv[0], argv, envp);
+        if(!_interpreter.empty())
+        {
+            char *argv[] = {(char *)_interpreter.c_str(), (char *)_script_filename.c_str(), NULL};
+            execve(argv[0], argv, envp);
+        }
+        else
+        {
+            char *argv[] = {(char *)_script_filename.c_str(), NULL};
+            execve(argv[0], argv, envp);
+        }
         _exit(1);
     }
 
@@ -116,7 +125,8 @@ pid_t CGI::execute(int &fdR, int &fdW)
     fdR = pipe_stdout[0];
     fdW = pipe_stdin[1];
 
-    return pid;
+    _pid = pid;
+    return _pid;
 }
 
 static std::string trim(std::string &str)
