@@ -14,3 +14,6 @@ print(f"<p>{body}</p>")
 print("</body></html>")
 
 sys.stdout.flush()
+
+import time
+time.sleep(100)

@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/select.h>
+#include <signal.h>
+#include <ctime>
 
 int main(int argc, char** argv) {
     std::string script = (argc > 1) ? argv[1] : "mult2.py";
@@ -24,25 +26,46 @@ int main(int argc, char** argv) {
     // --- STEP 2: Simple select() read loop ---
     std::string response = "";
     char buffer[1024];
+    pid_t child_pid = cgi.getPid();
+    time_t start_time = time(NULL);
+
 
     while (true) {
+        int status = 0;
+        pid_t result = waitpid(child_pid, &status, WNOHANG);
+        if(result == child_pid) {
+            std::cout << "[Child process exited]\n";
+            break;
+        }
+        else if(result == 0) {
+            if(time(NULL) - start_time >= 5) {
+                std::cout << "[Timeout reached, killing child]\n";
+                kill(child_pid, SIGKILL);
+                waitpid(child_pid, NULL, 0);
+                break;
+            }
+        }
         fd_set read_fds;
         FD_ZERO(&read_fds);
         FD_SET(fdR, &read_fds); // Tell select: "watch fdR for incoming data"
 
-        // Wait until fdR has data ready (timeout = NULL means wait indefinitely)
-        if (select(fdR + 1, &read_fds, NULL, NULL, NULL) <= 0)
-            break;
+        struct timeval timeout;
+        timeout.tv_sec = 1; // 1 second timeout
+        timeout.tv_usec = 0;
 
-        // If fdR has data, read it!
-        if (FD_ISSET(fdR, &read_fds)) {
-            ssize_t bytes = read(fdR, buffer, sizeof(buffer) - 1);
-            if (bytes <= 0) 
-                break; // 0 means child closed connection (EOF), < 0 means error
-            
-            buffer[bytes] = '\0';
-            response.append(buffer);
-            std::cout << "[Received chunk!]\n";
+        // Wait until fdR has data ready (timeout = NULL means wait indefinitely)
+        if (select(fdR + 1, &read_fds, NULL, NULL, &timeout) <= 0)
+        {
+            if (FD_ISSET(fdR, &read_fds)) {
+                ssize_t bytes = read(fdR, buffer, sizeof(buffer) - 1);
+                if (bytes <= 0) 
+                {
+                    break; // 0 means child closed connection (EOF), < 0 means error
+                }
+                buffer[bytes] = '\0';
+                response.append(buffer);
+                std::cout << "[Received chunk!]\n";
+            }
         }
     }
 
