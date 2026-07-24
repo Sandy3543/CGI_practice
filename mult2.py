@@ -12,3 +12,5 @@ print("<html><body>")
 print(f"<h1>Received POST Body:</h1>")
 print(f"<p>{body}</p>")
 print("</body></html>")
+
+sys.stdout.flush()
